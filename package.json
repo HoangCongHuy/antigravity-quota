@@ -1,0 +1,28 @@
+{
+  "name": "antigravity-quota",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/HoangCongHuy/antigravity-quota.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/HoangCongHuy/antigravity-quota/issues"
+  },
+  "homepage": "https://github.com/HoangCongHuy/antigravity-quota#readme",
+  "devDependencies": {
+    "@types/node": "^25.0.9",
+    "nodemon": "^3.1.11",
+    "ts-node": "^10.9.2",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.17"
+  }
+}
