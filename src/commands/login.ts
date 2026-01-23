@@ -1,8 +1,6 @@
 interface LoginOptions {
-    noBrowser?: boolean;
-    port?: number;
+  noBrowser?: boolean;
+  port?: number;
 }
 
-export async function loginCommand(options: LoginOptions): Promise<void> {
-
-}
+export async function loginCommand(options: LoginOptions): Promise<void> {}
