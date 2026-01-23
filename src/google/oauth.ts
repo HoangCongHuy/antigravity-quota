@@ -248,6 +248,13 @@ async function tryOnboardUser(
     } catch (error) {
       debug('oauth', `Onboard attempt ${attempt} error:`, error);
     }
+    if (attempt < CLOUDCODE_CONFIG.onboardAttempts) {
+      debug(
+        'oauth',
+        `Onboard attempt ${attempt} failed, waiting ${CLOUDCODE_CONFIG.onboardDelayMs}ms before retrying`,
+      );
+      await sleep(CLOUDCODE_CONFIG.onboardDelayMs);
+    }
   }
 
   debug('oauth', 'Onboarding attempts exhausted');
