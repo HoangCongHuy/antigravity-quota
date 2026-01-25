@@ -1,5 +1,5 @@
-import { createServer } from 'node:http';
-import { OAuthTokenResponse } from '../quota/types';
+import { createServer, IncomingMessage, ServerResponse } from 'node:http';
+import { OAuthTokenResponse, StoredTokens } from '../quota/types';
 import { debug } from '../core/logger';
 
 const OAUTH_CONFIG = {
@@ -259,4 +259,166 @@ async function tryOnboardUser(
 
   debug('oauth', 'Onboarding attempts exhausted');
   return undefined;
+}
+
+export async function resolveProjectId(
+  accessToken: string,
+): Promise<ProjectIdResult> {
+  debug('oauth', 'Resolving project ID from Cloud Code API');
+
+  try {
+    const response = await fetch(
+      `${CLOUDCODE_CONFIG.baseUrl}/v1internal:loadCodeAssist`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+          'User-Agent': CLOUDCODE_CONFIG.userAgent,
+        },
+        body: JSON.stringify({
+          metatata: CLOUDCODE_CONFIG.metadata,
+        }),
+      },
+    );
+
+    if (!response.ok) {
+      debug('oauth', `loadCodeAssist failed: ${response.status}`);
+      return { projectId: undefined, tierId: undefined };
+    }
+
+    const data = (await response.json()) as LoadCodeAssisResponse;
+
+    const projectId = extractProjectId(data.cloudaicompanionProject);
+    const tierId = data.paidTier?.id || data.currentTier?.id;
+
+    if (projectId) {
+      debug('oauth', `Got projectId from loadCodeAssist: ${projectId}`);
+      return { projectId, tierId };
+    }
+    debug(
+      'oauth',
+      'No projectId in loadCodeAssist response, initiating onboarding',
+    );
+    const onboardTier = pickOnboardTier(data.allowedTiers, tierId);
+    if (!onboardTier) {
+      debug('oauth', 'Cannot determine tier for onboarding');
+      return { projectId: undefined, tierId };
+    }
+
+    const onboardedProjectId = await tryOnboardUser(accessToken, onboardTier);
+    return { projectId: onboardedProjectId, tierId: onboardTier };
+  } catch (error) {
+    debug('oauth', 'Failed to resolve project ID', error);
+    return { projectId: undefined, tierId: undefined };
+  }
+}
+
+export async function startOAuthFlow(
+  options: OAuthOptions = {},
+): Promise<OAuthResult> {
+  const port = await getAvailablePort(options.port);
+  const redirectUri = `http://127.0.0.1:${port}/callback`;
+  const state = generateState();
+
+  debug('oauth', `Starting OAuth flow on port ${port}`);
+
+  const authParams = new URLSearchParams({
+    client_id: OAUTH_CONFIG.clientId,
+    redirect_uri: redirectUri,
+    response_type: 'code',
+    scope: OAUTH_CONFIG.scopes.join(' '),
+    access_type: 'offline',
+    prompt: 'consent',
+    state,
+  });
+
+  const authUrl = `${OAUTH_CONFIG.authUrl}?${authParams.toString()}`;
+
+  return new Promise((resolve) => {
+    let resolved = false;
+    const server = createServer(
+      async (req: IncomingMessage, res: ServerResponse) => {
+        if (resolved) return;
+
+        const url = new URL(req.url || '/', `http://127.0.0.1:${port}`);
+
+        if (url.pathname === '/callback') {
+          const code = url.searchParams.get('code');
+          const returnedState = url.searchParams.get('state');
+          const errorParam = url.searchParams.get('error');
+
+          if (errorParam) {
+            res.writeHead(400, { 'Content-Type': 'text/html' });
+            res.end(
+              '<html><body><h1>Login Failed</h1><p>You can close this window.</p></body></html>',
+            );
+            resolved = true;
+            server.close();
+            resolve({ success: false, error: errorParam });
+            return;
+          }
+
+          if (!code || returnedState !== state) {
+            res.writeHead(400, { 'Content-Type': 'text/html' });
+            res.end(
+              '<html><body><h1>Invalid Request</h1><p>State mismatch or missing code.</p></body></html>',
+            );
+            resolved = true;
+            server.close();
+            resolve({ success: false, error: 'Invalid callback' });
+            return;
+          }
+
+          try {
+            const tokenResponse = await exchangeCodeForTokens(
+              code,
+              redirectUri,
+            );
+            const email = await getUserEmail(tokenResponse.access_token);
+            let projectId: string | undefined;
+            try {
+              const projectResult = await resolveProjectId(
+                tokenResponse.access_token,
+              );
+              projectId = projectResult.projectId;
+              if (projectId) {
+                debug('oauth', `Project ID resolved: ${projectId}`);
+              } else {
+                debug('oauth', 'No project ID obtained (will fetch on demand)');
+              }
+            } catch (err) {
+              debug(
+                'oauth',
+                'Failed to resolve project ID during login (will fetch on demand)',
+                err,
+              );
+            }
+
+            const tokens: StoredTokens = {
+              accessToken: tokenResponse.access_token,
+              refreshToken: tokenResponse.refresh_token || '',
+              expiresAt: Date.now() + tokenResponse.expires_in * 1000,
+              email,
+              projectId,
+            };
+
+            if (email) {
+            }
+          } catch (error) {
+            res.writeHead(500, { 'Content-Type': 'text/html' });
+            res.end(
+              '<html><body><h1>Login Failed</h1><p>Token exchange failed.</p></body></html>',
+            );
+            resolved = true;
+            server.close();
+            resolve({
+              success: false,
+              error: error instanceof Error ? error.message : 'Unknown error',
+            });
+          }
+        }
+      },
+    );
+  });
 }
