@@ -1,6 +1,8 @@
 import { createServer, IncomingMessage, ServerResponse } from 'node:http';
 import { OAuthTokenResponse, StoredTokens } from '../quota/types';
-import { debug } from '../core/logger';
+import { debug, info } from '../core/logger';
+import open from 'open';
+import { getAccountManager } from '../accounts';
 
 const OAUTH_CONFIG = {
   clientId:
@@ -404,7 +406,22 @@ export async function startOAuthFlow(
             };
 
             if (email) {
+              getAccountManager().addAccount(tokens, email);
             }
+
+            res.writeHead(200, { 'Content-Type': 'text/html' });
+            res.end(`
+              <html>
+                <body style="font-family: system-ui; padding: 40px; text-align: center;">
+                  <h1>Login Successful!</h1>
+                  <p>You are now logged in${email ? ` as <strong>${email}</strong>` : ''}.</p>
+                  <p>You can close this window and return to the terminal.</p>
+                </body>
+              </html>
+            `);
+            resolved = true;
+            server.close();
+            resolve({ success: true, email });
           } catch (error) {
             res.writeHead(500, { 'Content-Type': 'text/html' });
             res.end(
@@ -419,6 +436,40 @@ export async function startOAuthFlow(
           }
         }
       },
+    );
+
+    server.listen(port, '127.0.0.1', async () => {
+      info('');
+      info('Opening browser for Google login...');
+      info('');
+
+      if (options.noBrowser) {
+        info('Open this URL in your browser:');
+        info(authUrl);
+      } else {
+        try {
+          await open(authUrl);
+          info('If the browser did not open, visit this URL:');
+          info(authUrl);
+        } catch (err) {
+          debug('oauth', 'Failed to open browser', err);
+          info('Could not open browser. Please visit this URL:');
+          info(authUrl);
+        }
+      }
+      info('');
+      info('Waiting for authentication...');
+    });
+
+    setTimeout(
+      () => {
+        if (!resolved) {
+          resolved = true;
+          server.close();
+          resolve({ success: false, error: 'Authentication timeout' });
+        }
+      },
+      2 * 60 * 1000,
     );
   });
 }

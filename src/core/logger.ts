@@ -24,7 +24,7 @@ export function debug(category: string, message: string, data?: unknown): void {
 }
 
 export function info(message: string): void {
-  console.log(`ℹ️ ${message}`);
+  console.log(`${message}`);
 }
 
 export function warn(message: string): void {

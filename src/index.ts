@@ -10,7 +10,7 @@ program
   .description('CLI tool to check Antigravity model quota via Google Cloud API')
   .version(version)
   .option('--debug', 'Enable debug mode')
-  .hook('preAction', (thisCommand, actionCommand) => {
+  .hook('preAction', (thisCommand) => {
     const opts = thisCommand.opts();
     if (opts.debug) {
       setDebugMode(true);
@@ -18,9 +18,10 @@ program
   });
 
 program
-  .name('login')
   .command('login')
   .description('Authenticate with Google (adds a new account)')
   .option('--no-browser', 'Do not open a browser, print URL instead')
   .option('-p --port <port>', 'Port for OAuth callback server', parseInt)
   .action(loginCommand);
+
+program.parse();

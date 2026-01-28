@@ -4,6 +4,9 @@
   "description": "",
   "type": "module",
   "main": "dist/index.js",
+  "bin": {
+    "antigravity-quota": "dist/index.js"
+  },
   "scripts": {
     "build": "tsup",
     "dev": "tsx src/index.ts",
@@ -40,6 +43,7 @@
     "cli-table3": "^0.6.5",
     "commander": "^14.0.2",
     "inquirer": "^13.2.1",
-    "open": "^11.0.0"
+    "open": "^11.0.0",
+    "tsx": "^4.21.0"
   }
 }

@@ -12,6 +12,12 @@ export function getPlatform(): Platform {
   return 'linux';
 }
 
+/**
+ * Get the config directory for this application
+ * - Windows: %APPDATA%/antigravity-quota
+ * - macOS: ~/Library/Application Support/antigravity-quota
+ * - Linux: ~/.config/antigravity-quota
+ */
 export function getConfigDir(): string {
   const p = getPlatform();
   const home = homedir();
