@@ -422,3 +422,34 @@ export async function startOAuthFlow(
     );
   });
 }
+
+export async function refreshAccessToken(
+  refreshToken: string,
+): Promise<OAuthTokenResponse> {
+  debug('oauth', 'Refreshing access token');
+
+  const params = new URLSearchParams({
+    refresh_token: refreshToken,
+    client_id: OAUTH_CONFIG.clientId,
+    client_secret: OAUTH_CONFIG.clientSecret,
+    grant_type: 'refresh_token',
+  });
+
+  const response = await fetch(OAUTH_CONFIG.tokenUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: params.toString(),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    debug('oauth', 'Failed to refresh access token', error);
+    throw new Error(`Token refresh failed: ${response.status}`);
+  }
+
+  const data = (await response.json()) as OAuthTokenResponse;
+  debug('oauth', 'Token refresh successful');
+  return data;
+}
