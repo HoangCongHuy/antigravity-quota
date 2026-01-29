@@ -1,0 +1,93 @@
+import { NoAuthMethodAvailableError } from '../core/errors';
+import { debug } from '../core/logger';
+import {
+  CloudCodeClient,
+  FetchAvailableModelsResponse,
+} from '../google/cloudcode';
+import { extractProjectId } from '../google/oauth';
+import { parseQuotaSnapshot } from '../google/parses';
+import { getTokenManager } from '../google/token-manager';
+import { QuotaSnapshot } from './types';
+
+export type QuotaMethod = 'google' | 'local' | 'auto';
+
+export async function fetchQuota(
+  method: QuotaMethod = 'auto',
+): Promise<QuotaSnapshot> {
+  if (method === 'auto') {
+    try {
+      debug('service', 'Auto mode: trying local method first');
+      return await fetchQuotaLocal();
+    } catch (err) {
+      debug('service', 'Auto mode: local method failed', err);
+      const tokenManager = getTokenManager();
+      if (tokenManager.isLoggedIn()) {
+        debug('service', 'User is logged in, falling back to Google method');
+        return fetchQuotaGoogle();
+      }
+      throw new NoAuthMethodAvailableError();
+    }
+  }
+
+  if (method === 'local') {
+    return fetchQuotaLocal();
+  }
+
+  return fetchQuotaGoogle();
+}
+
+async function fetchQuotaGoogle(): Promise<QuotaSnapshot> {
+  debug('service', 'Fetching quota from google');
+
+  const tokenManager = getTokenManager();
+  const email = tokenManager.getEmail();
+  const client = new CloudCodeClient(tokenManager);
+
+  const codeAssistResponse = await client.loadCodeAssist();
+  debug(
+    'service',
+    'Code assist response received',
+    JSON.stringify(codeAssistResponse),
+  );
+
+  if (codeAssistResponse?.cloudaicompanionProject) {
+    const projectId = extractProjectId(
+      codeAssistResponse.cloudaicompanionProject,
+    );
+    if (projectId) {
+      tokenManager.setProjectId(projectId);
+      debug('service', `Project ID saved: ${projectId}`);
+    }
+  }
+
+  let modelsResponse: FetchAvailableModelsResponse = {};
+
+  try {
+    modelsResponse = await client.fetchAvailableModels();
+    debug(
+      'service',
+      'Models response received',
+      JSON.stringify(modelsResponse),
+    );
+  } catch (error) {
+    debug(
+      'service',
+      'Failed to fetch models (might need different permissions)',
+      error,
+    );
+  }
+
+  const snapshot = parseQuotaSnapshot(
+    codeAssistResponse,
+    modelsResponse,
+    email,
+  );
+
+  debug('service', 'Quota snapshot created');
+  return snapshot;
+}
+
+async function fetchQuotaLocal(): Promise<QuotaSnapshot> {
+  debug('service', 'Fetching quota from local Antigravity server');
+  const proocessInfo = await detectAntigraviryProcess();
+}

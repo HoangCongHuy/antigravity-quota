@@ -4,6 +4,7 @@ import { setDebugMode } from './core/logger';
 import { loginCommand } from './commands/login';
 import { logoutCommand } from './commands/logout';
 import { statusCommand } from './commands/status';
+import { quotaCommand } from './commands/quota';
 
 const program = new Command();
 
@@ -39,5 +40,19 @@ program
   .option('--all', 'Show status for all accounts')
   .option('-a, --account <email>', 'Show status for specific account')
   .action(statusCommand);
+
+program
+  .command('quota')
+  .description('Fetch and display quota information')
+  .option('--json', 'Output as JSON')
+  .option(
+    '-m, --method <method>',
+    'Method to use: auto (default), local, or google',
+    'auto',
+  )
+  .option('--all', 'Show quota for all accounts')
+  .option('-a, --account <email>', 'Show quota for specific account')
+  .option('--refresh', 'Force refresh (skip cache)')
+  .action(quotaCommand);
 
 program.parse();
