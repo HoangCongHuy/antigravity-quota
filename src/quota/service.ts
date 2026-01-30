@@ -1,5 +1,6 @@
 import {
   AntigravityNotRunningError,
+  LocalConnectionError,
   NoAuthMethodAvailableError,
   PortDetectionError,
 } from '../core/errors';
@@ -12,6 +13,7 @@ import { extractProjectId } from '../google/oauth';
 import { parseQuotaSnapshot } from '../google/parses';
 import { getTokenManager } from '../google/token-manager';
 import { discoverPorts } from '../local/port-detective';
+import { probeForConnectAPI } from '../local/port-prober';
 import { detectAntigraviryProcess } from '../local/process-detector';
 import { QuotaSnapshot } from './types';
 
@@ -108,6 +110,15 @@ async function fetchQuotaLocal(): Promise<QuotaSnapshot> {
     throw new PortDetectionError();
   }
 
-  debug('service', `Discovered ${ports.length} listening ports: ${ports.join(', ')}`)
-  
+  debug(
+    'service',
+    `Discovered ${ports.length} listening ports: ${ports.join(', ')}`,
+  );
+
+  const probeResult = await probeForConnectAPI(ports, processInfo.csrfToken)
+  if (!probeResult) {
+    throw new LocalConnectionError('Could not find Antigravity Connect API on any port')
+  }
+
+  debug('service', `Found Connect API at ${probeResult.baseUrl}`)
 }
