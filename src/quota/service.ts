@@ -1,4 +1,8 @@
-import { NoAuthMethodAvailableError } from '../core/errors';
+import {
+  AntigravityNotRunningError,
+  NoAuthMethodAvailableError,
+  PortDetectionError,
+} from '../core/errors';
 import { debug } from '../core/logger';
 import {
   CloudCodeClient,
@@ -7,6 +11,8 @@ import {
 import { extractProjectId } from '../google/oauth';
 import { parseQuotaSnapshot } from '../google/parses';
 import { getTokenManager } from '../google/token-manager';
+import { discoverPorts } from '../local/port-detective';
+import { detectAntigraviryProcess } from '../local/process-detector';
 import { QuotaSnapshot } from './types';
 
 export type QuotaMethod = 'google' | 'local' | 'auto';
@@ -89,5 +95,19 @@ async function fetchQuotaGoogle(): Promise<QuotaSnapshot> {
 
 async function fetchQuotaLocal(): Promise<QuotaSnapshot> {
   debug('service', 'Fetching quota from local Antigravity server');
-  const proocessInfo = await detectAntigraviryProcess();
+  const processInfo = await detectAntigraviryProcess();
+  if (!processInfo) {
+    throw new AntigravityNotRunningError();
+  }
+
+  debug('service', `Found Antigravity process: PID ${processInfo.pid}`);
+
+  const ports = await discoverPorts(processInfo.pid);
+
+  if (ports.length === 0) {
+    throw new PortDetectionError();
+  }
+
+  debug('service', `Discovered ${ports.length} listening ports: ${ports.join(', ')}`)
+  
 }
