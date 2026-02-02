@@ -1,0 +1,148 @@
+import CliTable3 from "cli-table3";
+import { AllAccountsQuotaResult } from ".";
+import { info } from "../core/logger";
+
+export function renderAllQuotaTable(results: AllAccountsQuotaResult[]): void {
+    if (results.length === 0) {
+        info('\n📭 No accounts found.')
+        info('\n💡 `Run: antigravity-quota login` to add an account.\n')
+        return
+    }
+
+    const sortedResults = [...results].sort((a, b) => {
+        if (a.status === 'error' && b.status !== 'error') {
+            return 1
+        }
+        if (a.status !== 'error' && b.status === 'error') {
+            return -1
+        }
+        if (a.status === 'error' && b.status === 'error') {
+            return 0
+        }
+
+        const getRemaining = (result: AllAccountsQuotaResult): number => {
+            const firstModel = result.snapshot?.models?.[0]
+            if (!firstModel) return -1
+            if (firstModel.isExhausted) return 0
+            return firstModel.remainingPercentage ?? -1
+        }
+
+        const aRemaining = getRemaining(a)
+        const bRemaining = getRemaining(b)
+
+        return bRemaining - aRemaining
+    })
+
+    info('\n📊 Quota Overview - All Accounts')
+    info('═'.repeat(70))
+
+    const totalWidth = process.stdout.columns || 80
+
+    // Calculate responsive widths
+    // Standard: [30, 10, 15, 20] = ~75 content + 13 border = 88 chars
+
+    let colWidths: number[] | undefined
+    if (totalWidth < 80) {
+        colWidths = undefined
+    } else if (totalWidth < 100) {
+        colWidths = [25, 8, 12, 18]
+    } else {
+        colWidths = [30, 10, 15, 20]
+    }
+
+    const tableOptions: any = {
+        head: ['Account', 'Source', 'Credits', 'Quota Remaining'],
+        style: {
+            head: ['cyan'],
+            border: ['gray']
+        }
+    }
+
+    if (colWidths) {
+        tableOptions.colWidths = colWidths
+    }
+
+    const table = new CliTable3(tableOptions)
+    const errors: string[] = []
+
+    for (const result of sortedResults) {
+        const nameDisplay = result.isActive ? `${result.email} [*]` : result.email
+        if (result.status === 'error') {
+            table.push([
+                nameDisplay,
+                '-',
+                '-',
+                result.error || 'Error'
+            ])
+            errors.push(`${result.email}: ${result.error}`)
+        } else {
+            const snapshot = result.snapshot
+            const source = result.status === 'cached' ? `Cached (${formatCacheAge(result.cacheAge)})` : (snapshot?.method.toUpperCase() || '-')
+
+            let credits = '-'
+            if (snapshot?.promptCredits) {
+                const pc = snapshot.promptCredits
+                credits = `${pc.available} / ${pc.monthly}`
+            }
+
+            let quotaRemanining = '-'
+            if (snapshot?.models && snapshot.models.length > 0) {
+                const minRemaining = Math.min(
+                    ...snapshot.models.filter(m => m.remainingPercentage !== undefined).map(m => m.remainingPercentage!)
+                )
+
+                if (isFinite(minRemaining)) {
+                    const remainingPct = minRemaining * 100
+                    quotaRemanining = formatQuotaRemainingBar(remainingPct)
+                } else if (snapshot.models.some(m => m.isExhausted)) {
+                    quotaRemanining = '❌ EXHAUSTED'
+                }
+            }
+
+            table.push([
+                nameDisplay,
+                source,
+                credits,
+                quotaRemanining
+            ])
+        }
+        
+    }
+
+    info(table.toString())
+    if (errors.length > 0) {
+        info(`\n⚠️  ${errors.length} account(s) had errors:`)
+        for (const err of errors) {
+            info(`   - ${err}`)
+        }
+    }
+
+    info('\n[*] = active account')
+    info('💡 Use --refresh to fetch latest data\n')
+}
+
+function formatCacheAge(seconds: number | undefined): string {
+    if (seconds === undefined) {
+        return '?'
+    }
+    if (seconds < 60) {
+        return `${seconds}s`
+    }
+
+    if (seconds < 3600) {
+        return `${Math.floor(seconds / 60)}m`
+    }
+
+    return `${Math.floor(seconds / 3600)}h`
+}
+
+function formatQuotaRemainingBar(remainingPercentage: number): string {
+    const width = 10
+    const filled = Math.round((remainingPercentage / 100) * width)
+    const empty = width - filled
+
+    const filledChar = '█'
+    const emptyChar = '░'
+
+    return `${filledChar.repeat(filled)}${emptyChar.repeat(empty)} ${Math.round(remainingPercentage)}%`
+}
