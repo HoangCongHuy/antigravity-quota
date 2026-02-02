@@ -115,10 +115,21 @@ async function fetchQuotaLocal(): Promise<QuotaSnapshot> {
     `Discovered ${ports.length} listening ports: ${ports.join(', ')}`,
   );
 
-  const probeResult = await probeForConnectAPI(ports, processInfo.csrfToken)
+  const probeResult = await probeForConnectAPI(ports, processInfo.csrfToken);
   if (!probeResult) {
-    throw new LocalConnectionError('Could not find Antigravity Connect API on any port')
+    throw new LocalConnectionError(
+      'Could not find Antigravity Connect API on any port',
+    );
   }
 
-  debug('service', `Found Connect API at ${probeResult.baseUrl}`)
+  debug('service', `Found Connect API at ${probeResult.baseUrl}`);
+
+  const client = new ConnectClient(probeResult.baseUrl, processInfo.csrfToken);
+  const userStatus = await client.getUserStatus();
+
+  debug('service', 'User status received from local server');
+  const snapshot = parseLocalQuotaSnapshot(userStatus);
+
+  debug('service', 'Local quota snapshot created');
+  return snapshot;
 }
