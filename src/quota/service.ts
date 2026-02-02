@@ -12,6 +12,7 @@ import {
 import { extractProjectId } from '../google/oauth';
 import { parseQuotaSnapshot } from '../google/parses';
 import { getTokenManager } from '../google/token-manager';
+import { ConnectClient } from '../local/connect-client';
 import { discoverPorts } from '../local/port-detective';
 import { probeForConnectAPI } from '../local/port-prober';
 import { detectAntigraviryProcess } from '../local/process-detector';
