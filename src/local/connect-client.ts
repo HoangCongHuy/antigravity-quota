@@ -173,5 +173,91 @@ export class ConnectClient {
 
   private extractQuota(
     data: Record<string, unknown>,
-  ): ConnectUserStatus['quota'] {}
+  ): ConnectUserStatus['quota'] {
+    const quota: ConnectUserStatus['quota'] = {};
+
+    const planStatus = data.planStatus as Record<string, unknown> | undefined;
+    if (planStatus) {
+      const available = planStatus.availablePromptCredits;
+      const planInfo = planStatus.planInfo as
+        | Record<string, unknown>
+        | undefined;
+      const monthly = planInfo?.monthlyPromptCredits;
+
+      if (typeof available === 'number' && typeof monthly === 'number') {
+        const used = monthly - available;
+        quota.promptCredits = {
+          used,
+          limit: monthly,
+          remaining: available,
+        };
+      }
+    }
+
+    const cascadeData = data.cascadeModelConfigData as
+      | Record<string, unknown>
+      | undefined;
+    const clientModelConfigs = cascadeData?.clientModelConfigs;
+
+    if (Array.isArray(clientModelConfigs)) {
+      quota.models = clientModelConfigs.map(this.parseModel.bind(this));
+    }
+
+    return quota;
+  }
+
+  private parseModel(model: unknown): ConnectModelInfo {
+    if (typeof model !== 'object' || model === null) {
+      return {
+        modelId: 'unknown',
+        isExhausted: false,
+      };
+    }
+
+    const m = model as Record<string, unknown>;
+
+    const modelOrAlias = m.modelOrAlias as Record<string, unknown> | undefined;
+    const modelId =
+      typeof modelOrAlias?.model === 'string' ? modelOrAlias.model : 'unknown';
+
+    const quotaInfo = m.quotaInfo as Record<string, unknown> | undefined;
+    const remainingFraction =
+      typeof quotaInfo?.remainingFraction === 'number'
+        ? quotaInfo.remainingFraction
+        : undefined;
+    const resetTime =
+      typeof quotaInfo?.resetTime === 'string'
+        ? quotaInfo.resetTime
+        : undefined;
+
+    return {
+      modelId,
+      displayName: typeof m.label === 'string' ? m.label : undefined,
+      label: typeof m.label === 'string' ? m.label : undefined,
+      quota: {
+        remaining: undefined,
+        limit: undefined,
+        usedPercentage:
+          remainingFraction !== undefined ? 1 - remainingFraction : undefined,
+        remainingPercentage: remainingFraction,
+        resetTime,
+        timeUntilResetMs: resetTime
+          ? this.parseResetTime(resetTime)
+          : undefined,
+      },
+      isExhausted: remainingFraction === 0,
+    };
+  }
+
+  private parseResetTime(resetTime: string): number | undefined {
+    try {
+      const resetDate = new Date(resetTime);
+      const now = Date.now();
+      const diff = resetDate.getTime() - now;
+
+      return diff > 0 ? diff : undefined;
+    } catch {
+      return undefined;
+    }
+  }
 }
