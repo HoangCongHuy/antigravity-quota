@@ -22,7 +22,7 @@ import {
   getTokenManagerForAccount,
   resetTokenManager,
 } from '../google/token-manager';
-import { printQuotaJson } from '../quota/format';
+import { printQuotaJson, printQuotaTable } from '../quota/format';
 import { fetchQuota, QuotaMethod } from '../quota/service';
 import { QuotaSnapshot } from '../quota/types';
 import { AllAccountsQuotaResult } from '../render';
@@ -278,6 +278,4 @@ async function fetchQuotaForAccount(
     }
   }
 }
-function printQuotaTable(snapshot: QuotaSnapshot) {
-  throw new Error('Function not implemented.');
-}
+

@@ -26,7 +26,7 @@ const SYSTEM_PROMPT =
 const METADATA = {
   ideType: 'ANTIGRAVITY',
   platform: 'PLATFORM_UNSPECIFIED',
-  plugingType: 'GEMINI',
+  pluginType: 'GEMINI',
 };
 
 export interface LoadCodeAssistResponse {

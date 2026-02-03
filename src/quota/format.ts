@@ -46,7 +46,7 @@ export function printQuotaJson(snapshot: QuotaSnapshot): void {
   info(JSON.stringify(snapshot, null, 2));
 }
 
-export function printQUotaTable(snapshot: QuotaSnapshot): void {
+export function printQuotaTable(snapshot: QuotaSnapshot): void {
   const timestamp = new Date(snapshot.timestamp).toLocaleString();
   info('');
   info(`📊 Antigravity Quota Status (via ${snapshot.method.toUpperCase()})`);

@@ -42,7 +42,7 @@ program
   .action(statusCommand);
 
 program
-  .command('quota')
+  .command('quota', { isDefault: true})
   .description('Fetch and display quota information')
   .option('--json', 'Output as JSON')
   .option(

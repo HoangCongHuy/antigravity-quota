@@ -16,7 +16,7 @@
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "npm run build",
-    "format": "prettier --write \"src/**/*.ts\"",
+    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "check-format": "prettier --check \"src/**/*.ts\""
   },
   "repository": {
