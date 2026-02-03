@@ -242,7 +242,7 @@ export class CloudCodeClient {
   }
 
   async fetchAvailableModels(): Promise<FetchAvailableModelsResponse> {
-    const body = this.projectId ? { projcet: this.projectId } : {};
+    const body = this.projectId ? { project: this.projectId } : {};
     return this.request<FetchAvailableModelsResponse>(
       '/v1internal:fetchAvailableModels',
       body,
