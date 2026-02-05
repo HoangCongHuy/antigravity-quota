@@ -1,9 +1,11 @@
 {
-  "name": "antigravity-quota",
+  "name": "@hoangconghuy/antigravity-quota",
   "version": "1.0.0",
   "description": "",
   "type": "module",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "main": "dist/index.js",
   "bin": {
     "antigravity-quota": "dist/index.js"
