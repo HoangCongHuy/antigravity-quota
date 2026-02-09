@@ -1,6 +1,7 @@
 import CliTable3 from 'cli-table3';
 import { AllAccountsQuotaResult } from '.';
 import { info } from '../core/logger';
+import { AccountSummary } from '../accounts';
 
 export function renderAllQuotaTable(results: AllAccountsQuotaResult[]): void {
   if (results.length === 0) {
@@ -139,4 +140,49 @@ function formatQuotaRemainingBar(remainingPercentage: number): string {
   const emptyChar = '░';
 
   return `${filledChar.repeat(filled)}${emptyChar.repeat(empty)} ${Math.round(remainingPercentage)}%`;
+}
+
+export function renderAccountsTable(accounts: AccountSummary[]): void {
+  if (accounts.length === 0) {
+    info('\n📭 No accounts found.');
+    info('\n💡 Run `antigravity-quota login` to add an account.\n');
+    return;
+  }
+
+  info('\n📊 Antigravity Accounts');
+  info('═'.repeat(60));
+
+  const totalWidth = process.stdout.columns || 80;
+  const isSmallTerminal = totalWidth < 90;
+
+  const colWidths = isSmallTerminal ? [25, 8, 12, 12] : [30, 10, 15, 15];
+  const finalColWidths = totalWidth < 60 ? undefined : colWidths;
+
+  const tableOptions: any = {
+    head: ['Account', 'Status', 'Credits', 'Last Used'],
+    style: {
+      head: ['cyan'],
+      border: ['gray'],
+    },
+  };
+
+  if (finalColWidths) {
+    tableOptions.colWidths = finalColWidths;
+  }
+
+  const table = new CliTable3(tableOptions);
+  for (const account of accounts) {
+    const nameDisplay = account.isActive
+      ? `${account.email} [*]`
+      : account.email;
+    table.push([
+      nameDisplay,
+      formatStatus(account.status),
+      formatCredits(account.cachedCredits),
+      formatRelativeTime(account.lastUsed),
+    ]);
+  }
+
+  info(table.toString());
+  info('\n[*] = active account\n');
 }

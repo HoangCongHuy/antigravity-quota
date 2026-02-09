@@ -42,7 +42,7 @@ program
   .action(statusCommand);
 
 program
-  .command('quota', { isDefault: true})
+  .command('quota', { isDefault: true })
   .description('Fetch and display quota information')
   .option('--json', 'Output as JSON')
   .option(
@@ -54,5 +54,15 @@ program
   .option('-a, --account <email>', 'Show quota for specific account')
   .option('--refresh', 'Force refresh (skip cache)')
   .action(quotaCommand);
+
+const accountsCmd = program
+  .command('accounts')
+  .description('Manage multiple accounts');
+
+accountsCmd
+  .command('list')
+  .description('List all accounts')
+  .option('--refresh', 'Show refresh tip')
+  .action((options) => accountsCommand('list', [], options));
 
 program.parse();

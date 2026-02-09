@@ -278,4 +278,3 @@ async function fetchQuotaForAccount(
     }
   }
 }
-
