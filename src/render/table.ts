@@ -1,7 +1,7 @@
 import CliTable3 from 'cli-table3';
-import { AllAccountsQuotaResult } from '.';
 import { info } from '../core/logger';
 import { AccountSummary } from '../accounts';
+import { QuotaSnapshot } from '../quota/types';
 
 export function renderAllQuotaTable(results: AllAccountsQuotaResult[]): void {
   if (results.length === 0) {
@@ -185,4 +185,74 @@ export function renderAccountsTable(accounts: AccountSummary[]): void {
 
   info(table.toString());
   info('\n[*] = active account\n');
+}
+
+export interface AllAccountsQuotaResult {
+  email: string;
+  isActive: boolean;
+  status: 'success' | 'error' | 'cached';
+  error?: string;
+  snapshot?: QuotaSnapshot;
+  cacheAge?: number;
+}
+
+function formatStatus(status: string): string {
+  switch (status) {
+    case 'valid':
+      return '✅';
+    case 'expired':
+      return '⚠️';
+    case 'invalid':
+      return '❌';
+    default:
+      return '❓';
+  }
+}
+
+function formatCredits(
+  credits:
+    | {
+        used: number;
+        limit: number;
+      }
+    | null
+    | undefined,
+): string {
+  if (!credits) {
+    return '-';
+  }
+
+  return `${credits.limit - credits.used} / ${credits.limit}`;
+}
+
+function formatRelativeTime(isoDate: string | null): string {
+  if (!isoDate) {
+    return 'Never';
+  }
+
+  const date = new Date(isoDate);
+  const now = Date.now();
+  const diffMs = now - date.getTime();
+
+  const minutes = Math.floor(diffMs / (1000 * 60));
+  const hours = Math.floor(diffMs / (1000 * 60 * 60));
+  const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (minutes < 1) {
+    return 'Just now';
+  }
+
+  if (minutes < 60) {
+    return `${minutes}m ago`;
+  }
+
+  if (hours < 24) {
+    return `${hours}h ago`;
+  }
+
+  if (days === 1) {
+    return 'Yesterday';
+  }
+
+  return `${days} days ago`;
 }
