@@ -1,6 +1,10 @@
 import { getAccountManager } from '../accounts';
 import { error, info, success, warn } from '../core/logger';
 import { startOAuthFlow } from '../google/oauth';
+import {
+  getTokenManagerForAccount,
+  resetTokenManager,
+} from '../google/token-manager';
 import { renderAccountsTable } from '../render/table';
 
 interface ListOptions {
@@ -139,5 +143,119 @@ export function currentAccountCommand(): void {
     } else {
       info(`\nRun antigravity-quota login to add an account.`);
     }
+  }
+}
+
+export async function refreshAccountCommand(
+  email: string | undefined,
+  options: RefreshOptions,
+): Promise<void> {
+  const manager = getAccountManager();
+  if (options.all) {
+    const emails = manager.getAccountEmails();
+
+    if (emails.length === 0) {
+      warn('No accounts to refresh.');
+      return;
+    }
+
+    info(`\n🔄 Refreshing ${emails.length} accounts...`);
+
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const email of emails) {
+      try {
+        const tokenManager = getTokenManagerForAccount(email);
+        if (tokenManager.isTokenExpired()) {
+          await tokenManager.refreshToken();
+          success(`✅ ${email}`);
+          successCount++;
+        } else {
+          info(`⏭️ ${email} (token still valid)`);
+          successCount++;
+        }
+      } catch (err) {
+        error(`❌ ${email}: ${err instanceof Error ? err.message : 'Failed'}`);
+        failCount++;
+      }
+    }
+
+    resetTokenManager();
+
+    if (failCount > 0) {
+      warn(`Failed to refresh ${failCount} accounts.`);
+    } else {
+      success(`Refreshed ${successCount} accounts.`);
+    }
+    return;
+  }
+
+  const targetEmail = email || manager.getActiveEmail();
+  if (!targetEmail) {
+    error('No account specified.');
+    process.exit(1);
+  }
+
+  if (!manager.hasAccount(targetEmail)) {
+    error(`Account '${targetEmail}' not found.`);
+    process.exit(1);
+  }
+
+  info(`Refreshing account ${targetEmail}...`);
+
+  try {
+    const tokenManager = getTokenManagerForAccount(targetEmail);
+    if (!tokenManager.isTokenExpired()) {
+      info(`⏭️ ${targetEmail} (token still valid)`);
+      return;
+    }
+
+    await tokenManager.refreshToken();
+    resetTokenManager();
+    success(`✅ ${targetEmail}`);
+  } catch (err) {
+    error(
+      `❌ ${targetEmail}: ${err instanceof Error ? err.message : 'Failed'}`,
+    );
+    process.exit(1);
+  }
+}
+
+export async function accountsCommand(
+  subcommand: string,
+  args: string[],
+  options: { refresh?: boolean; force?: boolean; all?: boolean },
+): Promise<void> {
+  switch (subcommand) {
+    case 'list':
+      listAccountsCommand({ refresh: options.refresh });
+      break;
+    case 'add':
+      await addAccountCommand();
+      break;
+    case 'switch':
+      if (!args[0]) {
+        error('Please specify an account email to switch to.');
+        process.exit(1);
+      }
+      switchAccountCommand(args[0]);
+      break;
+    case 'remove':
+      if (!args[0]) {
+        error('Please specify an account email to remove.');
+        process.exit(1);
+      }
+      removeAccountCommand(args[0], { force: options.force });
+      break;
+    case 'current':
+      currentAccountCommand();
+      break;
+    case 'refresh':
+      await refreshAccountCommand(args[0], { all: options.all });
+      break;
+    default:
+      listAccountsCommand({ refresh: options.refresh });
+      break;
   }
 }

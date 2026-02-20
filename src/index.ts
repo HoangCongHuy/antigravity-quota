@@ -5,6 +5,7 @@ import { loginCommand } from './commands/login';
 import { logoutCommand } from './commands/logout';
 import { statusCommand } from './commands/status';
 import { quotaCommand } from './commands/quota';
+import { accountsCommand } from './commands/accounts';
 
 const program = new Command();
 
