@@ -6,6 +6,7 @@ import { logoutCommand } from './commands/logout';
 import { statusCommand } from './commands/status';
 import { quotaCommand } from './commands/quota';
 import { accountsCommand } from './commands/accounts';
+import { doctorCommand } from './commands/doctor';
 
 const program = new Command();
 
@@ -88,5 +89,10 @@ accountsCmd
   .action((email, options) =>
     accountsCommand('refresh', email ? [email] : [], options),
   );
+
+program
+  .command('doctor')
+  .description('Run diagnostics and configuration')
+  .action(doctorCommand);
 
 program.parse();
