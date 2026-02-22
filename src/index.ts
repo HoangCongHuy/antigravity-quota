@@ -66,4 +66,27 @@ accountsCmd
   .option('--refresh', 'Show refresh tip')
   .action((options) => accountsCommand('list', [], options));
 
+accountsCmd
+  .command('add')
+  .description('Add a new account (triggers OAuth login)')
+  .action(() => accountsCommand('add', [], {}));
+
+accountsCmd
+  .command('switch <email>')
+  .description('Switch to a different account')
+  .action((email) => accountsCommand('switch', [email], {}));
+
+accountsCmd
+  .command('current')
+  .description('Show current account')
+  .action(() => accountsCommand('current', [], {}));
+
+accountsCmd
+  .command('refresh [email]')
+  .description('Refresh account tokens')
+  .option('--all', 'Refresh all accounts')
+  .action((email, options) =>
+    accountsCommand('refresh', email ? [email] : [], options),
+  );
+
 program.parse();
