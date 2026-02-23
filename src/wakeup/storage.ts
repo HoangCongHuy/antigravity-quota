@@ -1,7 +1,8 @@
 import { join } from 'path';
 import { getConfigDir } from '../core/env';
-import { existsSync, mkdirSync, readFileSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { debug } from '../core/logger';
+import { WakeupConfig } from './type';
 
 const MAX_HISTORY_ENTRIES = 100;
 const WAKEUP_DIR_NAME = 'wakeup';
@@ -35,3 +36,18 @@ function readJsonFile<T>(filename: string, defaultValue: T): T {
 
   return defaultValue;
 }
+
+function writeJsonFile<T>(filename: string, data: T): void {
+  ensureWakeupDir();
+  const filepath = join(getWakeupDir(), filename);
+
+  try {
+    writeFileSync(filepath, JSON.stringify(data, null, 2), 'utf-8');
+    debug('wakeup-storage', `wrote ${filename}`);
+  } catch (err) {
+    debug('wakeup-storage', `Error writing ${filename}: `, err);
+    throw err;
+  }
+}
+
+export function loadWakeupConfig(): WakeupConfig | null {}

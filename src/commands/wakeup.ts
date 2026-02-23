@@ -1,4 +1,4 @@
-import { debug } from '../core/logger';
+import { debug, info } from '../core/logger';
 
 type WakeupSubcommand =
   | 'config'
@@ -58,7 +58,4 @@ function getTimeAgo(date: Date): string {
   if (seconds < 86400) return `${Math.floor(seconds / 3600)} hours ago`;
 
   return `${Math.floor(seconds / 86400)} days ago`;
-}
-function info(arg0: string) {
-  throw new Error('Function not implemented.');
 }
